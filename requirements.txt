@@ -1,0 +1,8 @@
+PyPDF2
+cairosvg
+qrbill
+openpyxl
+svglib
+reportlab
+docx-mailmerge2
+docx2pdf
