@@ -3,9 +3,10 @@ from distutils.core import setup
 setup(
   name='doc-workflow',
   packages=['docwf'],
-  version='0.1.0-alpha3',
+  version='0.1.0-alpha4',
   license='MIT',
   description='A Python Document Management Framework for generating and sending (pdf, docx, etc) documents to customers',
+  long_description=open('README.md').read(),
   author='Iulian Ciorăscu',
   author_email='ciulian@gmail.com',
   url='https://github.com/iulica/doc-workflow',
