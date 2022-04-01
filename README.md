@@ -1,2 +1,2 @@
-# docman
-A Python Document Management Framework for generating and sending (pdf) documents to customers
+# doc-tasks
+A Python Document Management Framework for generating and sending (pdf, docx, etc) documents to customers
