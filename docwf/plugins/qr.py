@@ -1,6 +1,8 @@
 """ qr plugin - adds qr to bills """
 
 from io import BytesIO, StringIO
+import tempfile
+from matplotlib.pyplot import draw
 from PyPDF2 import PdfFileReader
 
 from qrbill.bill import QRBill
@@ -36,27 +38,36 @@ class QRBillMaker():
         if not debtor:
             debtor = None
         amount = value_dict['amount']
-        if float(amount) <= 0:
+        if not amount or float(amount) <= 0:
             return None
+        amount = str(round(float(amount), 2))
 
-        my_bill = QRBill(
-            account=self.iban_nr,
-            creditor=self.creditor,
-            amount=amount,
-            debtor=debtor,
-            extra_infos=value_dict['extra_infos'],
-            language=value_dict.get('language', 'de')
-        )
+        try:
+            my_bill = QRBill(
+                account=self.iban_nr,
+                creditor=self.creditor,
+                amount=amount,
+                debtor=debtor,
+                extra_infos=value_dict['extra_infos'],
+                language=value_dict.get('language', 'de')
+            )
+        except:
+            print(value_dict)
+            raise
 
         # generate the qr bill as pdf in pdf_out
-        # svg_out = StringIO()
+        # svg_out = BytesIO(encoding="utf-8")
         pdf_out = BytesIO()
         # TODO use StringIO() for svg generation
-        svg_filename = 'bills/svg/temp.svg'.format(
-            **value_dict)
+        with tempfile.TemporaryFile(mode='r+', encoding='utf-8') as svg_out:
+            my_bill.as_svg(svg_out, full_page=True)
+            svg_out.seek(0)
+            drawing = svg2rlg(svg_out)
+
+        # svg_filename = 'bills/svg/temp.svg'.format(
+        #     **value_dict)
         # pdf_filename = 'bills/{}_{}.pdf'.format(jahrgang, hausnr)
-        my_bill.as_svg(svg_filename, full_page=True)
-        drawing = svg2rlg(svg_filename)
+        # print(drawing)
         pdf_out.write(renderPDF.drawToString(drawing))
         pdf_out.seek(0)
         return pdf_out

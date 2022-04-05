@@ -7,7 +7,10 @@ class DirectColumnParser():
         self.column_index = column_index_map[column_name.lower()]
     
     def get_value(self, row):
-        return str(row[self.column_index].value).strip()
+        value = row[self.column_index].value
+        if value is None:
+            return None
+        return str(value).strip()
 
 class ConcatColumnParser():
     """ join several columns into one field, with a given separator """

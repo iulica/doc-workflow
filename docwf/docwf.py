@@ -241,6 +241,9 @@ class DocWorkflow():
                 output_name: parser.get_value(row)
                 for output_name, parser in parser_map.items()
             }
+            if not any(value_dict.values()):
+                # print("ignore empty row", index)
+                continue
             # print(value_dict)
             task_params.update(value_dict)
             if filter_func and not filter_func(task_params):
