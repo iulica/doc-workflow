@@ -246,3 +246,27 @@ Send reminder bills
             "attachments" : [ "bills/bills_{year}/reminders/bill_{year}_{clientnr}_reminder.pdf" ] # list of attachments
         }
     },
+
+Todo / Wish List
+================
+
+* Allow sending multiple attachments with file*.pdf
+* Create unit tests
+* Develop the command line to be able to run simple tasks directly
+* Add Google Sheets support for the data
+* Create more advanced filters
+* Auto-magically create directories (remove the makedir argument)
+
+Contributing
+============
+
+* Fork the repository on GitHub and start hacking
+* Send a pull request with your changes
+
+
+Credits
+=======
+
+This repository is created and maintained by `Iulian Ciorăscu`_.
+
+.. _Iulian Ciorăscu: https://github.com/iulica/
