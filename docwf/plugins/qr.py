@@ -2,7 +2,6 @@
 
 from io import BytesIO, StringIO
 import tempfile
-from matplotlib.pyplot import draw
 from PyPDF2 import PdfFileReader
 
 from qrbill.bill import QRBill
@@ -13,7 +12,7 @@ from .base import BasePlugin
 
 DEBTOR_KEYS = [
     "debtor_name", "debtor_city", "debtor_street", "debtor_pcode"
-]        
+]
 
 class QRBillMaker():
 

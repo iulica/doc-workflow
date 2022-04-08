@@ -1,5 +1,3 @@
-# doc-workflow
-
 =================
 Document Workflow
 =================
@@ -250,7 +248,6 @@ Send reminder bills
 Todo / Wish List
 ================
 
-* Allow sending multiple attachments with file*.pdf
 * Create unit tests
 * Develop the command line to be able to run simple tasks directly
 * Add Google Sheets support for the data
