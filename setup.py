@@ -3,11 +3,11 @@ from distutils.core import setup
 setup(
   name='doc-workflow',
   packages=['docwf', 'docwf.plugins'],
-  version='0.1.0-alpha7',
+  version='0.1.0-alpha8',
   license='MIT',
   description='A Python Document Management Framework for generating and sending (pdf, docx, etc) documents to customers',
   long_description=open('README.rst', encoding="utf-8").read(),
-  long_description_content_type='text/x-rst',
+  # long_description_content_type='text/x-rst',
   author='Iulian Ciorăscu',
   author_email='ciulian@gmail.com',
   url='https://github.com/iulica/doc-workflow',

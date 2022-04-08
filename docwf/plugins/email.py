@@ -6,6 +6,7 @@ from email.message import EmailMessage
 
 import ssl
 import smtplib
+import glob
 
 
 from .base import BasePlugin
@@ -60,12 +61,13 @@ class Email3Task(BasePlugin):
 
         msg.set_content(message)
         for attachment in attachments:
-            with open(attachment, 'rb') as pdf_file:
-                msg.add_attachment(
-                    pdf_file.read(),
-                    maintype='application',
-                    subtype='pdf',
-                    filename=basename(attachment))
+            for filename in glob.glob(attachment):
+                with open(filename, 'rb') as pdf_file:
+                    msg.add_attachment(
+                        pdf_file.read(),
+                        maintype='application',
+                        subtype='pdf',
+                        filename=basename(filename))
         
         # print(msg)
         smtp.send_message(msg)
