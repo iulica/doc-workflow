@@ -47,7 +47,7 @@ class QRBillMaker():
                 creditor=self.creditor,
                 amount=amount,
                 debtor=debtor,
-                extra_infos=value_dict['extra_infos'],
+                additional_information=value_dict.get('extra_infos', value_dict.get('additional_information', '')),
                 language=value_dict.get('language', 'de')
             )
         except:
