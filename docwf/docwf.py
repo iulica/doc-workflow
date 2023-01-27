@@ -7,7 +7,7 @@ import importlib
 import copy
 from typing import Optional
 
-from PyPDF2 import PdfFileReader, PdfFileWriter
+from PyPDF2 import PdfReader, PdfWriter
 
 # import cairosvg
 from openpyxl import load_workbook
@@ -62,12 +62,12 @@ class PluginManager():
 
 class InputPDFWrapper():
     def __init__(self, input_filename):
-        self.pdf_reader = PdfFileReader(input_filename)
+        self.pdf_reader = PdfReader(input_filename)
         self._crt_page = 0
     
     def readPages(self, no_pages):
         pages = [
-            self.pdf_reader.getPage(page_index)
+            self.pdf_reader.pages[page_index]
             for page_index in range(self._crt_page, self._crt_page + no_pages)
         ]
         self._crt_page += no_pages
@@ -99,7 +99,7 @@ class TaskHelper():
             output_filename = self._output_filename.format(**value_dict)
             output_stream = self._output_files.get(output_filename)
             if output_stream is None:
-                output_stream = PdfFileWriter()
+                output_stream = PdfWriter()
                 self._output_files[output_filename] = output_stream
 
         if self._input_filename is not None:
@@ -247,7 +247,7 @@ class DocWorkflow():
             # print(value_dict)
             task_params.update(value_dict)
             if filter_func and not filter_func(task_params):
-                print("fitered out")
+                # print("fitered out")
                 continue
 
             task_helper.do_task(task_params)

@@ -2,7 +2,7 @@
 
 from io import BytesIO, StringIO
 import tempfile
-from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfReader
 
 from qrbill.bill import QRBill
 from svglib.svglib import svg2rlg
@@ -90,7 +90,7 @@ class QRTask(BasePlugin):
         
         if self._merge_type == 'merge':
             merge_pos = self._task_info.get('merge_pos', 1) - 1
-            qrbill_page.mergePage(pages[merge_pos])
+            qrbill_page.merge_page(pages[merge_pos])
             pages[merge_pos] = qrbill_page
             return
         
@@ -101,10 +101,10 @@ class QRTask(BasePlugin):
         pages = list(input_stream.readPages(self._task_helper.pages_per_bill))
         bill_pdf = self.qr_bill_maker.create_bill(value_dict)
         if bill_pdf:
-            qrbill_page = PdfFileReader(bill_pdf).getPage(0)
+            qrbill_page = PdfReader(bill_pdf).pages[0]
             self._merge_bill_page(pages, qrbill_page)
 
         for page in pages:
-            output_stream.addPage(page)
+            output_stream.add_page(page)
         
 PluginClass = QRTask

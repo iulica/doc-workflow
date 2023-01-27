@@ -11,6 +11,6 @@ class SplitPdfTask(BasePlugin):
         page_start = self._task_info.get('split_start_page', 0)
         page_end = page_start + self._task_info.get('split_pages', self._task_helper.pages_per_bill)
         for page in list(input_stream.readPages(self._task_helper.pages_per_bill))[page_start:page_end]:
-            output_stream.addPage(page)
+            output_stream.add_page(page)
 
 PluginClass = SplitPdfTask
