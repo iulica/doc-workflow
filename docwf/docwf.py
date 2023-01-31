@@ -5,6 +5,7 @@ import json
 import pathlib
 import importlib
 import copy
+from functools import reduce
 from typing import Optional
 
 from PyPDF2 import PdfReader, PdfWriter
@@ -16,6 +17,23 @@ from .plugins.base import BasePlugin
 from .column_parser import get_parser_map
 
 PROCESS_BILLS_CONFIG = "docwf.json"
+
+def merge(a, b, path=None, strategy="replace"):
+    "merges b into a"
+    if path is None: path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                merge(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass # same leaf value
+            elif strategy == "replace":
+                a[key] = b[key]
+            else:
+                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            a[key] = b[key]
+    return a
 
 class PluginManager():
     """ Plugin Manager
@@ -141,8 +159,11 @@ class DocWorkflow():
             # global configuration
             #  key : value
             #  key : dict
-            "workbook": "", # workbook file name
-            "sheet": "", # workbook sheet to load
+            "data": {
+                "workbook": "", # workbook file name
+                "sheet": "", # workbook sheet to load
+                "filter": {filter definition}
+            },
             "constants":{} # constant attributes to add to the task params
         }
         The Global configuration can be 
@@ -176,7 +197,9 @@ class DocWorkflow():
         self.plugin_manager = PluginManager(plugins=plugins)
 
     def _make_filter_function(self, filter_dict):
-        return lambda x:x.get(filter_dict['column']) == filter_dict['value']
+        if filter_dict.get('value'):
+            return lambda x:x.get(filter_dict['column']) == filter_dict['value']
+        return lambda x:x.get(filter_dict['column']) not in [None, ""]
 
     def _build_parser_map(self, column_map_definition, sheet):
 
@@ -187,13 +210,24 @@ class DocWorkflow():
         }
         return get_parser_map(column_map_definition, column_index_map)
 
-    def _get_workbook(self, workbook_name):
+    def _load_workbook(self, workbook_name, data_dict):
+        # if workbook_name.startswith("https://docs.google.com/spreadsheets"):
+        #     import gspread
+        #     gc = gspread.service_account_from_dict(data_dict['credentials'])
+        #     workbook = gc.open_by_url(workbook_name)
+        #     print(workbook.worksheets())
+        # else:
+        workbook = load_workbook(
+            filename=workbook_name,
+            data_only=True)
+        # print(workbook.sheetnames)
+        return workbook
+
+    def _get_workbook(self, data_dict):
+        workbook_name = data_dict['workbook']
         workbook = self.workbook_cache.get(workbook_name)
         if workbook is None:
-            workbook = load_workbook(
-                filename=workbook_name,
-                data_only=True)
-            # print(workbook.sheetnames)
+            workbook = self._load_workbook(workbook_name, data_dict)
             self.workbook_cache[workbook_name] = workbook
         return workbook
 
@@ -213,8 +247,9 @@ class DocWorkflow():
                 else:
                     globals_dict[key] = value
 
-        workbook = self._get_workbook(globals_dict['workbook'])
-        sheet = workbook[globals_dict['sheet']]
+        data_dict = globals_dict['data']
+        workbook = self._get_workbook(data_dict)
+        sheet = workbook[data_dict['sheet']]
 
         task_params = globals_dict.get('constants', {}).copy()
         task_local_params = globals_dict.get('task_params', {}).copy()
@@ -223,8 +258,9 @@ class DocWorkflow():
         parser_map = self._build_parser_map(task_local_params, sheet)
 
         filter_func = None
-        if task_info.get('filter'):
-            filter_func = self._make_filter_function(task_info['filter'])
+        filter_definition = task_info.get('filter', data_dict.get('filter'))
+        if filter_definition:
+            filter_func = self._make_filter_function(filter_definition)
 
         task_dict = task_info['task']
         task_helper = TaskHelper(task_dict)
@@ -264,8 +300,26 @@ class DocWorkflow():
             self.process_task(task_info, globals_dict)
 
     @classmethod
+    def preprocess_config_file(cls, parent_config_file_name, config_file_name, included_files=None):
+        if included_files is None:
+            included_files = set()
+        config_path = pathlib.Path(config_file_name)
+        if not config_path.is_absolute() and parent_config_file_name:
+            config_path = pathlib.Path(parent_config_file_name.parent, config_file_name)
+
+        if config_path in included_files:
+            # recursive include
+            return {}
+        included_files.add(config_path)
+        config_obj = json.loads(open(config_path, 'r', encoding='utf-8').read())
+        return reduce(merge, [ 
+            cls.preprocess_config_file(config_path, import_file_name)
+            for import_file_name in config_obj.pop('#import', [])] + [config_obj])
+
+    @classmethod
     def main(cls, config_file_name, **kwargs):
-        config_obj = json.loads(open(config_file_name, 'r', encoding='utf-8').read())
+        config_obj = cls.preprocess_config_file(None, config_file_name)
+
         cls(config_obj, **kwargs).gen()
     
     @staticmethod
