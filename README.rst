@@ -283,7 +283,9 @@ Change the "workbook" value
 Export Google Spreadsheets in a PDF file
 ------------------------------------------
 
+Only works with gspread type data
 ::
+
     {
         "#import": ["inc/inc_workbook_gspread.json"]
         "name": "export sheets as pdf",
@@ -317,7 +319,7 @@ Export Google Spreadsheets in a PDF file
                 }
             }
         ]
-    },
+    }
 
 Todo / Wish List
 ================
