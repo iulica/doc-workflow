@@ -35,8 +35,10 @@ From Python:
 
     config_obj = {
         "globals": {
-            "workbook": "source.xlsx",
-            "sheet": "mailmergesheet",
+            "data": {
+                "workbook": "source.xlsx",
+                "sheet": "mailmergesheet",
+            },
             "constants": {
                 "language": "fr"
             }
@@ -46,6 +48,9 @@ From Python:
                 "active": 1, # you can activate/deactivate tasks
                 "name": "create bills", # name for debug purpose
                 "locals": {
+                    "data" : {
+                        "sheet": "overridesheetfortask"
+                    },
                     "key" : "value", # overrides global arguments for the task
                 },
                 "task": {
@@ -246,12 +251,41 @@ Send reminder bills
         }
     },
 
+Use Google Spreadsheets instead of Excel
+------------------------------------------
+
+To support google spreadsheets you need a service account and credentials as JSON.
+Follow the tutorial `gspread with service account`_.
+
+Change the "workbook" value
+::
+
+        "globals": {
+            "data": {
+                "workbook": "https://docs.google.com/spreadsheets/d/1u...",
+                "sheet": "mailmergesheet",
+                "credentials": {
+                    "type": "service_account",
+                    "project_id": "...",
+                    "private_key_id": "...",
+                    "private_key": "-----BEGIN PRIVATE KEY....\n-----END PRIVATE KEY-----\n",
+                    "client_email": "project@project-123.iam.gserviceaccount.com",
+                    "client_id": "...",
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/..."
+                }
+            },
+            ...
+        }
+
+
 Todo / Wish List
 ================
 
 * Create unit tests
 * Develop the command line to be able to run simple tasks directly
-* Add Google Sheets support for the data
 * Create more advanced filters
 * Auto-magically create directories (remove the makedir argument)
 
@@ -268,3 +302,4 @@ Credits
 This repository is created and maintained by `Iulian Ciorăscu`_.
 
 .. _Iulian Ciorăscu: https://github.com/iulica/
+.. _gspread with service account: https://docs.gspread.org/en/latest/oauth2.html#service-account
