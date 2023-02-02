@@ -6,8 +6,9 @@ class DirectColumnParser():
     def __init__(self, column_name, column_index_map):
         self.column_index = column_index_map[column_name.lower()]
     
-    def get_value(self, row):
-        value = row[self.column_index].value
+    def get_value(self, workbook, sheet, row):
+        value = workbook.get_value(sheet, row, self.column_index)
+        # row[self.column_index].value
         if value is None:
             return None
         return str(value).strip()
@@ -21,9 +22,9 @@ class ConcatColumnParser():
             for column_name in column_names]
         self.separator = separator
     
-    def get_value(self, row):
+    def get_value(self, workbook, sheet, row):
         return self.separator.join([
-            direct_parser.get_value(row)
+            direct_parser.get_value(workbook, sheet, row)
             for direct_parser in self.direct_parsers
         ])
 
@@ -35,8 +36,8 @@ class FixedSplitColumnParser():
         self.from_index = from_index
         self.to_index = to_index
     
-    def get_value(self, row):
-        value = self.direct_parser.get_value(row)
+    def get_value(self, workbook, sheet, row):
+        value = self.direct_parser.get_value(workbook, sheet, row)
         return value[self.from_index:self.to_index]
 
 class RemapColumnParser():
@@ -47,8 +48,8 @@ class RemapColumnParser():
         self.remap_dict = remap_dict
         self.default_value = default_value
     
-    def get_value(self, row):
-        value = self.direct_parser.get_value(row)
+    def get_value(self, workbook, sheet, row):
+        value = self.direct_parser.get_value(workbook, sheet, row)
         return self.remap_dict.get(str(value), self.default_value)
 
 def get_parser_map(column_map_definition, column_index_map, all_columns=True):

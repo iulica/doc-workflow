@@ -6,3 +6,4 @@ svglib
 reportlab
 docx-mailmerge2
 docx2pdf
+gspread

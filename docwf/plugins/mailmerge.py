@@ -8,16 +8,18 @@ class MailMergeTask(BasePlugin):
     """ class used for the docx mailmerge task """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert 'sheet' in kwargs
-        self._column_map = {
-            cell.value.strip().lower().replace(' ', '_'): cell.column - 1
-            for cell in kwargs['sheet'][1]
-            if cell.value
-        }
+        assert 'sheet' in kwargs and 'workbook' in kwargs
         self._rows = []
         self._document = None
         self._fields = None
         self._output_filename = None
+        self._workbook = kwargs['workbook']
+        self._sheet = kwargs['sheet']
+        self._column_map = {
+            column_name.replace(' ', '_'): column_index
+            for column_name, column_index in self._workbook.get_column_index_map(
+                self._sheet).items()
+        }
 
     def _init_document(self, value_dict):
         input_docx_filename = self._task_info['input_docx'].format(**value_dict)
@@ -33,9 +35,10 @@ class MailMergeTask(BasePlugin):
             self._init_document(value_dict)
 
         data_dict = {
-            field_name: row[self._column_map[field_name.lower()]].value
+            field_name: self._workbook.get_value(self._sheet, row, self._column_map[field_name.lower()])
             for field_name in self._fields
         }
+        # print(data_dict)
 
         self._rows.append(data_dict)
     

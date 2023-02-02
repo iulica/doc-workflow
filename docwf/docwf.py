@@ -11,9 +11,8 @@ from typing import Optional
 from PyPDF2 import PdfReader, PdfWriter
 
 # import cairosvg
-from openpyxl import load_workbook
 
-from .plugins.base import BasePlugin
+from .plugins.base import BasePlugin, BaseDataPlugin
 from .column_parser import get_parser_map
 
 PROCESS_BILLS_CONFIG = "docwf.json"
@@ -75,6 +74,14 @@ class PluginManager():
         """ gets a request object by creating a new object with
          the given parameters for the named plugin"""
         plugin_class = self.get_plugin_class(name)
+        if plugin_class:
+            return plugin_class(*args, **kwargs)
+
+    def get_workbook(self, wbtype, *args, **kwargs) -> Optional[BaseDataPlugin]:
+        """ gets a request object by creating a new object with
+         the given parameters for the named plugin"""
+        plugin_class = self.get_plugin_class(wbtype)
+        assert(issubclass(plugin_class, BaseDataPlugin))
         if plugin_class:
             return plugin_class(*args, **kwargs)
 
@@ -199,35 +206,35 @@ class DocWorkflow():
     def _make_filter_function(self, filter_dict):
         if filter_dict.get('value'):
             return lambda x:x.get(filter_dict['column']) == filter_dict['value']
-        return lambda x:x.get(filter_dict['column']) not in [None, ""]
+        return lambda x:x.get(filter_dict['column']) not in [None, "", '0']
 
-    def _build_parser_map(self, column_map_definition, sheet):
-
-        column_index_map = {
-            cell.value.strip().lower(): cell.column - 1
-            for cell in sheet[1]
-            if cell.value
-        }
+    def _build_parser_map(self, column_map_definition, workbook, sheet):
+        column_index_map = workbook.get_column_index_map(sheet)
+        # import pprint
+        # pprint.pprint(column_index_map)
+        # column_index_map = {
+        #     cell.value.strip().lower(): cell.column - 1
+        #     for cell in sheet[1]
+        #     if cell.value
+        # }
         return get_parser_map(column_map_definition, column_index_map)
 
-    def _load_workbook(self, workbook_name, data_dict):
-        # if workbook_name.startswith("https://docs.google.com/spreadsheets"):
-        #     import gspread
-        #     gc = gspread.service_account_from_dict(data_dict['credentials'])
-        #     workbook = gc.open_by_url(workbook_name)
-        #     print(workbook.worksheets())
-        # else:
-        workbook = load_workbook(
-            filename=workbook_name,
-            data_only=True)
-        # print(workbook.sheetnames)
-        return workbook
+    def _detect_wbtype(self, data_dict):
+        workbook_plugin = data_dict.get('wbtype')
+        if workbook_plugin is None:
+            workbook_name = data_dict['workbook']
+            if workbook_name.startswith("https://docs.google.com/spreadsheets"):
+                workbook_plugin = 'data_gspread'
+            else:
+                workbook_plugin = 'data_xlsx'
+        return workbook_plugin
 
     def _get_workbook(self, data_dict):
         workbook_name = data_dict['workbook']
         workbook = self.workbook_cache.get(workbook_name)
         if workbook is None:
-            workbook = self._load_workbook(workbook_name, data_dict)
+            workbook_plugin = self._detect_wbtype(data_dict)
+            workbook = self.plugin_manager.get_workbook(workbook_plugin, data_dict).load()
             self.workbook_cache[workbook_name] = workbook
         return workbook
 
@@ -249,13 +256,13 @@ class DocWorkflow():
 
         data_dict = globals_dict['data']
         workbook = self._get_workbook(data_dict)
-        sheet = workbook[data_dict['sheet']]
+        sheet = workbook.get_worksheet(data_dict['sheet'])
 
         task_params = globals_dict.get('constants', {}).copy()
         task_local_params = globals_dict.get('task_params', {}).copy()
         # task_local_params.update(task_info.get('task_params', {}))
         # print(task_local_params)
-        parser_map = self._build_parser_map(task_local_params, sheet)
+        parser_map = self._build_parser_map(task_local_params, workbook, sheet)
 
         filter_func = None
         filter_definition = task_info.get('filter', data_dict.get('filter'))
@@ -267,14 +274,17 @@ class DocWorkflow():
         task_handler = self._create_task(
             task_dict['type'],
             task_helper, task_dict, globals_dict,
+            workbook=workbook,
             sheet=sheet)
         if task_handler is None:
             raise RuntimeError("Missing plugin {}".format(task_dict['type']))
         # task_handler = SendEmailTask(globals_dict, task_info['output'])
-        for index in range(2, sheet.max_row+1):
-            row = sheet[index]
+
+        for index, row in workbook.iterrows(sheet):
+        # for index in range(2, sheet.max_row+1):
+        #     row = sheet[index]
             value_dict = {
-                output_name: parser.get_value(row)
+                output_name: parser.get_value(workbook, sheet, row)
                 for output_name, parser in parser_map.items()
             }
             if not any(value_dict.values()):

@@ -17,3 +17,35 @@ class BasePlugin():
 
     def finish(self):
         pass
+
+class BaseDataPlugin():
+
+    def __init__(self, data_dict, *args, **kwargs):
+        self._data_dict = data_dict
+        self._workbook = None
+
+    def load(self):
+        """loads the workbook"""
+        pass
+
+    def get_worksheets(self):
+        """
+        Returns a list of worksheets
+        """
+        pass
+
+    def get_worksheet(self, name):
+        """returns a worksheet by name"""
+
+    def get_column_index_map(self, sheet):
+        """ returns a mapping of column name (lower) : index for a row to get the value """
+
+    def get_value(self, sheet, row, column_index):
+        """ returns a value from a row of the sheet with an index """
+
+    def iterrows(self, worksheet):
+        """iterates over the rows and gives back a dictionary column:value"""
+        yield from ()
+
+    def finish(self):
+        pass
