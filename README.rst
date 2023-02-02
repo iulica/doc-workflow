@@ -280,6 +280,44 @@ Change the "workbook" value
             ...
         }
 
+Export Google Spreadsheets in a PDF file
+------------------------------------------
+
+::
+    {
+        "#import": ["inc/inc_workbook_gspread.json"]
+        "name": "export sheets as pdf",
+        "globals": {
+            "printsheets_defaults" : {
+                "gridlines": true,
+                "printnotes": false
+            }
+        },
+        "tasks": [
+            {
+                "active": 1,
+                "name": "bill documents",
+                "task": {
+                    "makedir": "bills/web",
+                    "type": "printsheets",
+                    "printsheets": [
+                        {
+                            "gid": "1571231333"
+                        },
+                        {
+                            "gid": "291382312357"
+                        },
+                        {
+                            "gid": "3712318114",
+                            "portrait": false,
+                            "printnotes": true
+                        }
+                    ],
+                    "output_filename": "bills/web/heizung_unterlagen_{key_year}.pdf"
+                }
+            }
+        ]
+    },
 
 Todo / Wish List
 ================

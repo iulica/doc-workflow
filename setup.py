@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
   name='doc-workflow',
   packages=['docwf', 'docwf.plugins'],
-  version='0.1.1-alpha2',
+  version='0.1.1-alpha3',
   license='MIT',
   description='A Python Document Management Framework for generating and sending (pdf, docx, etc) documents to customers',
   long_description=open('README.rst', encoding="utf-8").read(),
@@ -38,6 +38,7 @@ setup(
     "svglib",
     "reportlab",
     "docx-mailmerge2",
-    "docx2pdf"
+    "docx2pdf",
+    "gspread"
   ]
 )
