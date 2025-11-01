@@ -1,6 +1,8 @@
 from distutils.core import setup
 
 setup(
+    name="doc-workflow",
+    version="0.1.2-alpha4",
     packages=["docwf", "docwf.plugins"],
     description="A Python Document Management Framework for generating and sending (pdf, docx, etc) documents to customers",
     long_description=open("README.rst", encoding="utf-8").read(),
