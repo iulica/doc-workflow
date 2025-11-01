@@ -1,59 +1,61 @@
-""" process_bills - process bill pdfs through different tasks """
+"""process_bills - process bill pdfs through different tasks"""
 
-import sys
+import copy
+import importlib
 import json
 import pathlib
-import importlib
-import copy
+import sys
 from functools import reduce
 from typing import Optional
 
 from PyPDF2 import PdfReader, PdfWriter
 
-# import cairosvg
-
-from .plugins.base import BasePlugin, BaseDataPlugin
 from .column_parser import get_parser_map
+
+# import cairosvg
+from .plugins.base import BaseDataPlugin, BasePlugin
 
 PROCESS_BILLS_CONFIG = "docwf.json"
 
+
 def merge(a, b, path=None, strategy="replace"):
     "merges b into a"
-    if path is None: path = []
+    if path is None:
+        path = []
     for key in b:
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
                 merge(a[key], b[key], path + [str(key)])
             elif a[key] == b[key]:
-                pass # same leaf value
+                pass  # same leaf value
             elif strategy == "replace":
                 a[key] = b[key]
             else:
-                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+                raise Exception("Conflict at %s" % ".".join(path + [str(key)]))
         else:
             a[key] = b[key]
     return a
 
-class PluginManager():
-    """ Plugin Manager
+
+class PluginManager:
+    """Plugin Manager
     it holds a cache of task plugins
     """
 
     def __init__(self, plugin_dir="docwf.plugins", plugins=None):
-        """ Load plugins from plugin_dir but external plugins can be provided by the plugin_classes dictionary
-        """
+        """Load plugins from plugin_dir but external plugins can be provided by the plugin_classes dictionary"""
         self.plugin_dir = plugin_dir
-        self.plugins = {} # name -> module
+        self.plugins = {}  # name -> module
         if plugins:
             self.plugins.update(plugins)
 
     def reload(self):
-        """ reload the plugins """
+        """reload the plugins"""
         # TODO check if this works or one needs to unload the module with importlib
         self.plugins.clear()
 
     def get_plugin_class(self, plugin_name):
-        """ returns the plugin class for the plugin name """
+        """returns the plugin class for the plugin name"""
         plugin_module = self.plugins.get(plugin_name)
         if plugin_module is None:
             plugin_module = self.load_plugin(plugin_name)
@@ -63,7 +65,7 @@ class PluginManager():
         return plugin_module.PluginClass
 
     def load_plugin(self, plugin_name):
-        """ tries to load a plugin by name """
+        """tries to load a plugin by name"""
         try:
             return importlib.import_module("." + plugin_name, package=self.plugin_dir)
         except ImportError:
@@ -71,25 +73,26 @@ class PluginManager():
             return None
 
     def get_task(self, name, *args, **kwargs) -> Optional[BasePlugin]:
-        """ gets a request object by creating a new object with
-         the given parameters for the named plugin"""
+        """gets a request object by creating a new object with
+        the given parameters for the named plugin"""
         plugin_class = self.get_plugin_class(name)
         if plugin_class:
             return plugin_class(*args, **kwargs)
 
     def get_workbook(self, wbtype, *args, **kwargs) -> Optional[BaseDataPlugin]:
-        """ gets a request object by creating a new object with
-         the given parameters for the named plugin"""
+        """gets a request object by creating a new object with
+        the given parameters for the named plugin"""
         plugin_class = self.get_plugin_class(wbtype)
-        assert(issubclass(plugin_class, BaseDataPlugin))
+        assert issubclass(plugin_class, BaseDataPlugin)
         if plugin_class:
             return plugin_class(*args, **kwargs)
 
-class InputPDFWrapper():
+
+class InputPDFWrapper:
     def __init__(self, input_filename):
         self.pdf_reader = PdfReader(input_filename)
         self._crt_page = 0
-    
+
     def readPages(self, no_pages):
         pages = [
             self.pdf_reader.pages[page_index]
@@ -97,26 +100,26 @@ class InputPDFWrapper():
         ]
         self._crt_page += no_pages
         return pages
-    
+
     def reset(self):
         self._crt_page = 0
-    
+
     def close(self):
         self.pdf_reader.stream.close()
 
-class TaskHelper():
 
-    """ class used to help with the tasks input and output """
+class TaskHelper:
+    """class used to help with the tasks input and output"""
 
     def __init__(self, task_definition):
-        self._makedir_name = task_definition.get('makedir')
-        self._input_filename = task_definition.get('input_filename')
-        self._output_filename = task_definition.get('output_filename')
-        self._delete_input = task_definition.get('delete_input', False)
-        self._input_files = {} # map of input file name to the input pdf file
-        self._output_files = {} # map of output file names to output streams
+        self._makedir_name = task_definition.get("makedir")
+        self._input_filename = task_definition.get("input_filename")
+        self._output_filename = task_definition.get("output_filename")
+        self._delete_input = task_definition.get("delete_input", False)
+        self._input_files = {}  # map of input file name to the input pdf file
+        self._output_files = {}  # map of output file names to output streams
         self._made_folders = set()
-        self.pages_per_bill = task_definition.get('pages')
+        self.pages_per_bill = task_definition.get("pages")
 
     def get_io_streams(self, value_dict):
         output_stream = input_stream = None
@@ -131,7 +134,9 @@ class TaskHelper():
             input_filename = self._input_filename.format(**value_dict)
             input_stream = self._input_files.get(input_filename)
             if input_stream is None:
-                input_stream = self._input_files[input_filename] = InputPDFWrapper(input_filename)
+                input_stream = self._input_files[input_filename] = InputPDFWrapper(
+                    input_filename
+                )
 
         return input_stream, output_stream
 
@@ -141,9 +146,9 @@ class TaskHelper():
             if makedir_name not in self._made_folders:
                 self._made_folders.add(makedir_name)
                 pathlib.Path(makedir_name).mkdir(parents=True, exist_ok=True)
-    
+
     def do_task(self, value_dict):
-        self._makedir(value_dict) # create directory if needed
+        self._makedir(value_dict)  # create directory if needed
 
     def finish(self):
         for output_filename, pdf_writer in self._output_files.items():
@@ -157,44 +162,44 @@ class TaskHelper():
         self._input_files.clear()
 
 
-class DocWorkflow():
-    """ class handling bill processes 
-    
-        The configuration comes from a dictionary
-        Recognized keys:
-        "globals":{
-            # global configuration
-            #  key : value
-            #  key : dict
-            "data": {
-                "workbook": "", # workbook file name
-                "sheet": "", # workbook sheet to load
-                "filter": {filter definition}
-            },
-            "constants":{} # constant attributes to add to the task params
-        }
-        The Global configuration can be 
-        smartly (when dict, overwride only the specific keys) overwidden
-        through "locals" dictionary in each task definition
+class DocWorkflow:
+    """class handling bill processes
 
-        "tasks": [
-            {
-                "name": "task name", # just for pretty printing
-                "active": 0/1, # if the task is active or not
-                "params":{ # parameters of each row, gotten from the sheet rows
-                    key: value,
-                    key: {transformation},
-                },
-                "filter": {filter definiton}, # a filter to allow the row or skip it
-                "task": { # task definition
-                    "type": "type of task", # important to know which plugin to use
-                    "input_filename": "bills/rechnungen_{key_year}/{key_email}/R{key_year}_{key_house}.pdf", # will be used for a task helper
-                    "pages": 2, # number of pages per bill in the input file
-                    "output_filename": "bills/rechnungen_{key_year}/{key_email}/R{key_year}_{key_house}_MUSTER.pdf" # buffering the output, will be saved upon finishing the task
-                    task specific definition
-                }
+    The configuration comes from a dictionary
+    Recognized keys:
+    "globals":{
+        # global configuration
+        #  key : value
+        #  key : dict
+        "data": {
+            "workbook": "", # workbook file name
+            "sheet": "", # workbook sheet to load
+            "filter": {filter definition}
+        },
+        "constants":{} # constant attributes to add to the task params
+    }
+    The Global configuration can be
+    smartly (when dict, overwride only the specific keys) overwidden
+    through "locals" dictionary in each task definition
+
+    "tasks": [
+        {
+            "name": "task name", # just for pretty printing
+            "active": 0/1, # if the task is active or not
+            "params":{ # parameters of each row, gotten from the sheet rows
+                key: value,
+                key: {transformation},
+            },
+            "filter": {filter definiton}, # a filter to allow the row or skip it
+            "task": { # task definition
+                "type": "type of task", # important to know which plugin to use
+                "input_filename": "bills/rechnungen_{key_year}/{key_email}/R{key_year}_{key_house}.pdf", # will be used for a task helper
+                "pages": 2, # number of pages per bill in the input file
+                "output_filename": "bills/rechnungen_{key_year}/{key_email}/R{key_year}_{key_house}_MUSTER.pdf" # buffering the output, will be saved upon finishing the task
+                task specific definition
             }
-        ]
+        }
+    ]
 
     """
 
@@ -204,9 +209,9 @@ class DocWorkflow():
         self.plugin_manager = PluginManager(plugins=plugins)
 
     def _make_filter_function(self, filter_dict):
-        if filter_dict.get('value'):
-            return lambda x:x.get(filter_dict['column']) == filter_dict['value']
-        return lambda x:x.get(filter_dict['column']) not in [None, "", '0']
+        if filter_dict.get("value") is not None:
+            return lambda x: x.get(filter_dict["column"]) == filter_dict["value"]
+        return lambda x: x.get(filter_dict["column"]) not in [None, "", "0"]
 
     def _build_parser_map(self, column_map_definition, workbook, sheet):
         column_index_map = workbook.get_column_index_map(sheet)
@@ -220,21 +225,23 @@ class DocWorkflow():
         return get_parser_map(column_map_definition, column_index_map)
 
     def _detect_wbtype(self, data_dict):
-        workbook_plugin = data_dict.get('wbtype')
+        workbook_plugin = data_dict.get("wbtype")
         if workbook_plugin is None:
-            workbook_name = data_dict['workbook']
+            workbook_name = data_dict["workbook"]
             if workbook_name.startswith("https://docs.google.com/spreadsheets"):
-                workbook_plugin = 'data_gspread'
+                workbook_plugin = "data_gspread"
             else:
-                workbook_plugin = 'data_xlsx'
+                workbook_plugin = "data_xlsx"
         return workbook_plugin
 
     def _get_workbook(self, data_dict):
-        workbook_name = data_dict['workbook']
+        workbook_name = data_dict["workbook"]
         workbook = self.workbook_cache.get(workbook_name)
         if workbook is None:
             workbook_plugin = self._detect_wbtype(data_dict)
-            workbook = self.plugin_manager.get_workbook(workbook_plugin, data_dict).load()
+            workbook = self.plugin_manager.get_workbook(
+                workbook_plugin, data_dict
+            ).load()
             self.workbook_cache[workbook_name] = workbook
         return workbook
 
@@ -242,10 +249,9 @@ class DocWorkflow():
         return self.plugin_manager.get_task(task_type, *args, **kwargs)
 
     def process_task(self, task_info, globals_dict):
-
-        task_name = task_info.get('name', 'N/A')
+        task_name = task_info.get("name", "N/A")
         print("Doing task:", task_name)
-        globals_dict_update = task_info.get('locals')
+        globals_dict_update = task_info.get("locals")
         if globals_dict_update:
             globals_dict = copy.deepcopy(globals_dict)
             for key, value in globals_dict_update.items():
@@ -254,35 +260,38 @@ class DocWorkflow():
                 else:
                     globals_dict[key] = value
 
-        data_dict = globals_dict['data']
+        data_dict = globals_dict["data"]
         workbook = self._get_workbook(data_dict)
-        sheet = workbook.get_worksheet(data_dict['sheet'])
+        sheet = workbook.get_worksheet(data_dict["sheet"])
 
-        task_params = globals_dict.get('constants', {}).copy()
-        task_local_params = globals_dict.get('task_params', {}).copy()
+        task_params = globals_dict.get("constants", {}).copy()
+        task_local_params = globals_dict.get("task_params", {}).copy()
         # task_local_params.update(task_info.get('task_params', {}))
         # print(task_local_params)
         parser_map = self._build_parser_map(task_local_params, workbook, sheet)
 
         filter_func = None
-        filter_definition = task_info.get('filter', data_dict.get('filter'))
+        filter_definition = task_info.get("filter", data_dict.get("filter"))
         if filter_definition:
             filter_func = self._make_filter_function(filter_definition)
 
-        task_dict = task_info['task']
+        task_dict = task_info["task"]
         task_helper = TaskHelper(task_dict)
         task_handler = self._create_task(
-            task_dict['type'],
-            task_helper, task_dict, globals_dict,
+            task_dict["type"],
+            task_helper,
+            task_dict,
+            globals_dict,
             workbook=workbook,
-            sheet=sheet)
+            sheet=sheet,
+        )
         if task_handler is None:
-            raise RuntimeError("Missing plugin {}".format(task_dict['type']))
+            raise RuntimeError("Missing plugin {}".format(task_dict["type"]))
         # task_handler = SendEmailTask(globals_dict, task_info['output'])
 
         for index, row in workbook.iterrows(sheet):
-        # for index in range(2, sheet.max_row+1):
-        #     row = sheet[index]
+            # for index in range(2, sheet.max_row+1):
+            #     row = sheet[index]
             value_dict = {
                 output_name: parser.get_value(workbook, sheet, row)
                 for output_name, parser in parser_map.items()
@@ -303,14 +312,19 @@ class DocWorkflow():
         task_helper.finish()
 
     def gen(self):
-        globals_dict = self.config.get('globals', {})
-        for task_info in self.config['tasks']:
-            if not task_info.get('active', 1):
+        globals_dict = self.config.get("globals", {})
+        for task_info in self.config["tasks"]:
+            if not task_info.get("active", 1):
                 continue
-            self.process_task(task_info, globals_dict)
+            try:
+                self.process_task(task_info, globals_dict)
+            except Exception as exception:
+                print("task failed with error", exception)
 
     @classmethod
-    def preprocess_config_file(cls, parent_config_file_name, config_file_name, included_files=None):
+    def preprocess_config_file(
+        cls, parent_config_file_name, config_file_name, included_files=None
+    ):
         if included_files is None:
             included_files = set()
         config_path = pathlib.Path(config_file_name)
@@ -321,17 +335,22 @@ class DocWorkflow():
             # recursive include
             return {}
         included_files.add(config_path)
-        config_obj = json.loads(open(config_path, 'r', encoding='utf-8').read())
-        return reduce(merge, [ 
-            cls.preprocess_config_file(config_path, import_file_name)
-            for import_file_name in config_obj.pop('#import', [])] + [config_obj])
+        config_obj = json.loads(open(config_path, "r", encoding="utf-8").read())
+        return reduce(
+            merge,
+            [
+                cls.preprocess_config_file(config_path, import_file_name)
+                for import_file_name in config_obj.pop("#import", [])
+            ]
+            + [config_obj],
+        )
 
     @classmethod
     def main(cls, config_file_name, **kwargs):
         config_obj = cls.preprocess_config_file(None, config_file_name)
 
         cls(config_obj, **kwargs).gen()
-    
+
     @staticmethod
     def cli():
         config_file_name = PROCESS_BILLS_CONFIG

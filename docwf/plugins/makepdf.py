@@ -1,9 +1,9 @@
 """ mailmerge plugin - mailmerge a docx """
 
-from .base import BasePlugin
 import docx2pdf
+from .base import BasePlugin
 
-class MailMergeTask(BasePlugin):
+class MakePdfTask(BasePlugin):
 
     """ class used for the docx mailmerge task """
     def __init__(self, *args, **kwargs):
@@ -24,4 +24,4 @@ class MailMergeTask(BasePlugin):
             self._input_filename, self._output_filename,
             keep_active=self._task_info.get("keep_active", False))
 
-PluginClass = MailMergeTask
+PluginClass = MakePdfTask

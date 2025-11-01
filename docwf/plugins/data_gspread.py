@@ -1,4 +1,5 @@
 from .base import BaseDataPlugin
+
 try:
     import gspread
     from gspread.utils import ValueRenderOption
@@ -6,13 +7,14 @@ except ModuleNotFoundError:
     # please install the gspread module to use the gspread data type
     raise
 
+
 class GspreadWorkbook(BaseDataPlugin):
+    """class used to read gspread workbooks"""
 
-    """ class used to read gspread workbooks """
     def load(self):
-        workbook_url = self._data_dict['workbook']
+        workbook_url = self._data_dict["workbook"]
 
-        gc = gspread.service_account_from_dict(self._data_dict['credentials'])
+        gc = gspread.service_account_from_dict(self._data_dict["credentials"])
         self._workbook = gc.open_by_url(workbook_url)
         # print(workbook.worksheets())
         return self
@@ -48,8 +50,13 @@ class GspreadWorkbook(BaseDataPlugin):
 
     def iterrows(self, sheet):
         """iterates over the rows and gives back a index, dictionary column:value pairs"""
-        for index, row in enumerate(sheet.get_all_records(empty2zero=True, value_render_option=ValueRenderOption.unformatted)):
-        # for index, row in enumerate(sheet.get_values(value_render_option=ValueRenderOption.unformatted)[1:]):
-            yield (index+2, row)
+        for index, row in enumerate(
+            sheet.get_all_records(
+                empty2zero=True, value_render_option=ValueRenderOption.unformatted
+            )
+        ):
+            # for index, row in enumerate(sheet.get_values(value_render_option=ValueRenderOption.unformatted)[1:]):
+            yield (index + 2, row)
+
 
 PluginClass = GspreadWorkbook
