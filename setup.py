@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
   name='doc-workflow',
   packages=['docwf', 'docwf.plugins'],
-  version='0.1.1-alpha3',
+  version='0.1.2-alpha2',
   license='MIT',
   description='A Python Document Management Framework for generating and sending (pdf, docx, etc) documents to customers',
   long_description=open('README.rst', encoding="utf-8").read(),
